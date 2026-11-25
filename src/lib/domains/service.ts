@@ -33,8 +33,14 @@ export type DomainDnsView = {
 	sendingSubdomain?: { name: string; tag: string };
 };
 
-export async function listUserDomains(env: CloudflareEnv, userIds: string | string[]) {
+export async function listUserDomains(env: CloudflareEnv, userIds: string | string[], businessId?: string | null, isSuperAdmin?: boolean) {
 	const db = getDb(env);
+	if (isSuperAdmin) {
+		return db.select().from(domains);
+	}
+	if (businessId) {
+		return db.select().from(domains).where(eq(domains.businessId, businessId));
+	}
 	const ids = Array.isArray(userIds) ? userIds : [userIds];
 	return db.select().from(domains).where(ids.length === 1 ? eq(domains.userId, ids[0]) : inArray(domains.userId, ids));
 }
@@ -43,7 +49,7 @@ export async function addDomainForUser(
 	env: CloudflareEnv,
 	userId: string,
 	hostname: string,
-	options?: { enableRouting?: boolean; enableSending?: boolean; replaceMxRecords?: boolean; skipDns?: boolean; receivingProvider?: "none" | "cloudflare" | "resend" | "ses"; sendingProvider?: "none" | "cloudflare" | "resend" | "ses" },
+	options?: { enableRouting?: boolean; enableSending?: boolean; replaceMxRecords?: boolean; skipDns?: boolean; receivingProvider?: "none" | "cloudflare" | "resend" | "ses"; sendingProvider?: "none" | "cloudflare" | "resend" | "ses"; businessId?: string | null },
 ): Promise<{
 	domain: typeof domains.$inferSelect;
 	dns: DomainDnsView;
@@ -91,6 +97,7 @@ export async function addDomainForUser(
 		const domainId = existing?.id ?? newId("dom");
 		const values = {
 			id: domainId,
+			businessId: options?.businessId ?? existing?.businessId ?? null,
 			userId,
 			hostname: provisioned.hostname,
 			zoneId: provisioned.zone.id,

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 				: {}),
 			senderAddresses: await getMailboxDomainAddresses(db, mailbox),
 		}))),
-		canCreateShared: user.role === "admin" && entitlements.canShareMailboxes,
+		canCreateShared: (user.role === "admin" || user.role === "superadmin") && entitlements.canShareMailboxes,
 	});
 }
 
@@ -48,13 +48,13 @@ export async function POST(request: Request) {
 	}
 	const ownerUserId = mailboxType === "shared" ? user.id : parsed.data.ownerUserId ?? user.id;
 	if (ownerUserId !== user.id) {
-		if (user.role !== "admin") {
+		if (user.role !== "admin" && user.role !== "superadmin") {
 			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 		}
 		const [owner] = await db
 			.select({ id: users.id })
 			.from(users)
-			.where(and(eq(users.id, ownerUserId), eq(users.createdByUserId, user.id)))
+			.where(and(eq(users.id, ownerUserId), user.role === "superadmin" ? eq(users.id, ownerUserId) : eq(users.createdByUserId, user.id)))
 			.limit(1);
 		if (!owner) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 	}
@@ -89,6 +89,7 @@ export async function POST(request: Request) {
 	const id = newId("mbx");
 	await db.insert(mailboxes).values({
 		id,
+		businessId: user.businessId ?? null,
 		userId: ownerUserId,
 		domainId: parsed.data.domainId,
 		localPart,

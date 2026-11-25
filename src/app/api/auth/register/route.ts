@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 		resetEmail: firstRunParsed.data.resetEmail,
 		passwordHash: usePasskey ? PASSWORDLESS_PASSWORD_HASH : hashPassword(password!),
 		name,
-		role: "admin",
+		role: "superadmin",
 		isPrimaryAdmin: true,
 	});
 

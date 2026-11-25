@@ -6,8 +6,25 @@ import { kit } from "./kits";
 // DATABASE_URL selects one. Everything below is typed as SQLite, which is the shape the app queries.
 const { table: sqliteTable, text, integer, bool, timestamp, autoId, index, uniqueIndex, desc, nowSeconds } = kit;
 
+export const businesses = sqliteTable("businesses", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	slug: text("slug").notNull().unique(),
+	maxUsers: integer("max_users").notNull().default(10),
+	features: text("features").notNull().default('["branding","shared_mailboxes","forwarding","drive","calendar","ai_assistant"]'),
+	createdAt: timestamp("created_at")
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: timestamp("updated_at")
+		.notNull()
+		.$defaultFn(() => new Date()),
+}, (t) => [
+	uniqueIndex("businesses_slug_idx").on(t.slug),
+]);
+
 export const users = sqliteTable("users", {
 	id: text("id").primaryKey(),
+	businessId: text("business_id").references((): AnySQLiteColumn => businesses.id, { onDelete: "set null" }),
 	email: text("email").notNull().unique(),
 	resetEmail: text("reset_email"),
 	forwardingEmail: text("forwarding_email"),
@@ -22,7 +39,7 @@ export const users = sqliteTable("users", {
 	bookingUsername: text("booking_username"),
 	timeZone: text("time_zone"),
 	avatarKey: text("avatar_key"),
-	role: text("role", { enum: ["admin", "user"] }).notNull().default("user"),
+	role: text("role", { enum: ["superadmin", "admin", "user"] }).notNull().default("user"),
 	// Exactly one account is the primary admin: the one created during setup.
 	// They own administrator management and can hand the role to another account.
 	isPrimaryAdmin: bool("is_primary_admin").notNull().default(false),
@@ -75,12 +92,14 @@ export const users = sqliteTable("users", {
 }, (t) => [
 	uniqueIndex("users_booking_username_idx").on(t.bookingUsername),
 	index("users_created_by_idx").on(t.createdByUserId),
+	index("users_business_idx").on(t.businessId),
 ]);
 
 export const domains = sqliteTable(
 	"domains",
 	{
 		id: text("id").primaryKey(),
+		businessId: text("business_id").references((): AnySQLiteColumn => businesses.id, { onDelete: "set null" }),
 		userId: text("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
@@ -105,6 +124,7 @@ export const domains = sqliteTable(
 	(t) => [
 		uniqueIndex("domains_hostname_idx").on(t.hostname),
 		index("domains_user_idx").on(t.userId),
+		index("domains_business_idx").on(t.businessId),
 	],
 );
 
@@ -112,6 +132,7 @@ export const mailboxes = sqliteTable(
 	"mailboxes",
 	{
 		id: text("id").primaryKey(),
+		businessId: text("business_id").references((): AnySQLiteColumn => businesses.id, { onDelete: "set null" }),
 		userId: text("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
@@ -132,7 +153,11 @@ export const mailboxes = sqliteTable(
 			.notNull()
 			.$defaultFn(() => new Date()),
 	},
-	(t) => [uniqueIndex("mailboxes_address_idx").on(t.domainId, t.localPart), index("mailboxes_user_idx").on(t.userId)],
+	(t) => [
+		uniqueIndex("mailboxes_address_idx").on(t.domainId, t.localPart),
+		index("mailboxes_user_idx").on(t.userId),
+		index("mailboxes_business_idx").on(t.businessId),
+	],
 );
 
 export const mailboxAliases = sqliteTable(
@@ -1439,6 +1464,7 @@ export const importJobs = sqliteTable("import_jobs", {
 }, (t) => [index("import_jobs_user_idx").on(t.userId, t.createdAt), index("import_jobs_status_idx").on(t.status, t.updatedAt)]);
 
 export const schema = {
+	businesses,
 	users,
 	domains,
 	mailboxes,

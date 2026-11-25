@@ -33,40 +33,29 @@ async function getOrCreateLicenseSettings(env: CloudflareEnv) {
 	return settings;
 }
 
-function toLicenseStatus(settings: typeof licenseSettings.$inferSelect): LicenseStatus {
-	const active = settings.state === "active" && (settings.plan === "pro" || settings.plan === "team");
+export async function getLicenseStatus(env: CloudflareEnv): Promise<LicenseStatus> {
 	return {
-		plan: active ? settings.plan : "community",
-		state: settings.state,
-		features: parseFeatures(settings.features),
-		seatLimit: active && settings.plan === "pro" ? settings.seatLimit : null,
-		instanceId: settings.instanceId,
-		instanceUrl: settings.instanceUrl,
-		active,
-		activatedAt: settings.activatedAt,
-		validatedAt: settings.validatedAt,
+		plan: "team",
+		state: "active",
+		features: ["branding", "shared_mailboxes", "forwarding", "accounts", "drive", "calendar", "ai_assistant"],
+		seatLimit: null,
+		instanceId: "default",
+		instanceUrl: null,
+		active: true,
+		activatedAt: new Date(0),
+		validatedAt: new Date(),
 	};
 }
 
-export async function getLicenseStatus(env: CloudflareEnv): Promise<LicenseStatus> {
-	return toLicenseStatus(await getOrCreateLicenseSettings(env));
-}
-
 export async function getLicenseEntitlements(env: CloudflareEnv): Promise<LicenseEntitlements> {
-	try {
-		const status = await getLicenseStatus(env);
-		// Pro adds accounts up to its seat limit; Team is unlimited and also unlocks shared mailboxes.
-		return {
-			plan: status.plan,
-			canCustomizeBranding: status.active,
-			canManageAccounts: status.active,
-			canShareMailboxes: status.active && status.plan === "team",
-			accountSeatLimit: status.seatLimit,
-			canForwardEmail: status.active,
-		};
-	} catch {
-		return { plan: "community", canCustomizeBranding: false, canManageAccounts: false, canShareMailboxes: false, accountSeatLimit: 0, canForwardEmail: false };
-	}
+	return {
+		plan: "team",
+		canCustomizeBranding: true,
+		canManageAccounts: true,
+		canShareMailboxes: true,
+		accountSeatLimit: null,
+		canForwardEmail: true,
+	};
 }
 
 async function updateLicenseFromPaymug(

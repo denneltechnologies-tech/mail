@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
+import { businesses } from "@/db/schema";
 import { createUserAccountSchema } from "@/lib/validators";
 import { canManageUsers, isPrimaryAdmin } from "@/lib/auth/admin";
 import { getLicenseEntitlements } from "@/lib/licenses/service";
@@ -12,12 +14,22 @@ import { hasValidSessionMutationOrigin } from "@/lib/auth/origin";
 export async function GET(request: Request) {
 	const access = await requireTeamAdmin(request);
 	if (access.error) return access.error;
-	const includeContacts = canManageUsers(access.user!);
-	const rows = await listAccountsForAdmin(getDb(access.env));
-	const [{ accountSeatLimit }, seatsUsed] = await Promise.all([getLicenseEntitlements(access.env), countUsedAccountSeats(access.env)]);
+	const actor = access.user!;
+	const includeContacts = canManageUsers(actor);
+	const db = getDb(access.env);
+	const rows = await listAccountsForAdmin(db, actor);
+
+	let seatLimit: number | null = null;
+	let seatsUsed = rows.filter((r) => !r.disabled).length;
+
+	if (actor.role !== "superadmin" && actor.businessId) {
+		const [biz] = await db.select({ maxUsers: businesses.maxUsers }).from(businesses).where(eq(businesses.id, actor.businessId)).limit(1);
+		if (biz) seatLimit = biz.maxUsers;
+	}
+
 	return NextResponse.json({
 		accounts: rows.map((row) => (includeContacts ? accountListItemFromUser(row) : withoutAccountContacts(accountListItemFromUser(row)))),
-		seats: { limit: accountSeatLimit, used: seatsUsed },
+		seats: { limit: seatLimit, used: seatsUsed },
 	});
 }
 

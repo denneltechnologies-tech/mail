@@ -51,9 +51,13 @@ export function AuthGuard({ children, mode = "protected", requireMailbox, requir
 					return;
 				}
 
-				if (requireRole && data.user?.role !== requireRole) {
-					router.replace("/inbox");
-					return;
+				if (requireRole) {
+					const userRole = data.user?.role;
+					const isAllowed = userRole === requireRole || (requireRole === "admin" && (userRole === "superadmin" || userRole === "admin"));
+					if (!isAllowed) {
+						router.replace("/inbox");
+						return;
+					}
 				}
 
 				if (requirePrimary && !data.user?.isPrimaryAdmin) {

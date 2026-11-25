@@ -22,6 +22,7 @@ import { ShortcutsProvider } from "@/components/shortcuts";
 import { RouteTitle } from "@/components/route-title";
 
 const primaryOnlyPrefixes = [
+  "/businesses",
   "/agent",
   "/api-keys",
   "/webhooks",

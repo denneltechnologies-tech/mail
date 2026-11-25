@@ -1,8 +1,8 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { isUniqueConstraintError } from "@/lib/database-errors";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { domains, mailboxAliases, mailboxes, users } from "@/db/schema";
+import { businesses, domains, mailboxAliases, mailboxes, users } from "@/db/schema";
 import { hashPassword } from "@/lib/auth/password";
 import { ensureBookingUsername } from "@/lib/booking/username";
 import { rollbackEmailRoutingRuleChanges } from "@/lib/cloudflare-api";
@@ -18,6 +18,8 @@ type AccountAdminActor = {
 	id: string;
 	canManageMailboxes: boolean;
 	createdByUserId: string | null;
+	role?: string;
+	businessId?: string | null;
 };
 
 /** Shared by dashboard and admin API/MCP account creation. */
@@ -25,6 +27,25 @@ export async function createAccountResponse(env: CloudflareEnv, actor: AccountAd
 	const seatError = await getAccountSeatError(env);
 	if (seatError) return NextResponse.json({ error: seatError }, { status: 403 });
 	const db = getDb(env);
+
+	// Enforce business seat limit if this admin belongs to a business
+	const businessId = actor.businessId ?? null;
+	if (businessId) {
+		const [biz] = await db.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+		if (biz) {
+			const [userCountRow] = await db
+				.select({ count: count() })
+				.from(users)
+				.where(and(eq(users.businessId, businessId), eq(users.disabled, false)));
+			const currentUsers = userCountRow?.count ?? 0;
+			if (currentUsers >= biz.maxUsers) {
+				return NextResponse.json({
+					error: `User limit of ${biz.maxUsers} seat(s) reached for this business. Please contact the platform super administrator.`
+				}, { status: 403 });
+			}
+		}
+	}
+
 	const adminUserId = actor.id;
 	const domainOwnerIds = domainOwnerIdsForAdmin(actor);
 	const primaryDomain = await getDomainForAdmin(db, actor, input.domainId);
@@ -62,12 +83,12 @@ export async function createAccountResponse(env: CloudflareEnv, actor: AccountAd
 
 	const userId = newId("usr");
 	const mailboxId = newId("mbx");
-	const mailbox = { id: mailboxId, userId, domainId: primaryDomain.id, localPart: username, displayName: username, useAllDomains: input.useAllDomains };
+	const mailbox = { id: mailboxId, businessId, userId, domainId: primaryDomain.id, localPart: username, displayName: username, useAllDomains: input.useAllDomains };
 	const changes: CfEmailRoutingRuleChange[] = [];
 	let inserted = false;
 	try {
 		const accountInsert = db.insert(users).values({
-			id: userId, email, passwordHash: hashPassword(input.password), name: username,
+			id: userId, businessId, email, passwordHash: hashPassword(input.password), name: username,
 			role: input.role, createdByUserId: adminUserId, remoteContentMode: "ask",
 		}).returning();
 		const mailboxInsert = db.insert(mailboxes).values(mailbox);

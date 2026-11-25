@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BadgeDollarSign, Bot, Globe2, KeyRound, Mail, Palette, Users } from "@/components/icons";
+import { BadgeDollarSign, Bot, Globe2, KeyRound, Mail, Palette, Users, Building2 } from "@/components/icons";
 import { useLanguage } from "@/components/language-provider";
 import type { TranslationKey } from "@/lib/i18n/types";
 import { AdminUpdateCard } from "@/components/admin-update-card";
@@ -13,10 +13,17 @@ type AdminSection = {
 	titleKey: TranslationKey;
 	descriptionKey: TranslationKey;
 	icon: typeof Bot;
-	permission?: "primary" | "domains" | "users";
+	permission?: "superadmin" | "primary" | "domains" | "users";
 };
 
 const sections: AdminSection[] = [
+	{
+		href: "/businesses",
+		titleKey: "admin.nav.businesses",
+		descriptionKey: "admin.nav.platform",
+		icon: Building2,
+		permission: "superadmin",
+	},
 	{
 		href: "/agent",
 		titleKey: "admin.nav.agent",
@@ -42,13 +49,6 @@ const sections: AdminSection[] = [
 		titleKey: "admin.nav.branding",
 		descriptionKey: "admin.section.branding",
 		icon: Palette,
-		permission: "primary",
-	},
-	{
-		href: "/licenses",
-		titleKey: "admin.nav.licenses",
-		descriptionKey: "admin.section.licenses",
-		icon: BadgeDollarSign,
 		permission: "primary",
 	},
 	{
@@ -85,9 +85,10 @@ export default function AdminSettingsPage() {
 	function canSee(section: AdminSection): boolean {
 		if (!section.permission) return true;
 		if (!user) return false;
-		if (section.permission === "primary") return user.isPrimaryAdmin;
-		if (section.permission === "domains") return user.isPrimaryAdmin || user.canManageDomains;
-		return user.isPrimaryAdmin || user.canManageUsers;
+		if (section.permission === "superadmin") return user.role === "superadmin";
+		if (section.permission === "primary") return user.role === "superadmin" || user.isPrimaryAdmin;
+		if (section.permission === "domains") return user.role === "superadmin" || user.isPrimaryAdmin || user.canManageDomains;
+		return user.role === "superadmin" || user.isPrimaryAdmin || user.canManageUsers;
 	}
 
 	return (

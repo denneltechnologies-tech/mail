@@ -5,9 +5,11 @@ import { AUTH_SESSION_CHANGED_EVENT, authFetch } from "@/lib/auth/client";
 
 export type CurrentUser = {
 	id: string;
+	businessId?: string | null;
 	email: string;
 	name: string;
-	role: "admin" | "user";
+	role: "superadmin" | "admin" | "user";
+	isSuperAdmin?: boolean;
 	isPrimaryAdmin: boolean;
 	canManageMailboxes: boolean;
 	canManageDomains: boolean;

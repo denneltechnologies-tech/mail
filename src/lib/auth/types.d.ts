@@ -1,7 +1,8 @@
-export type UserRole = "admin" | "user";
+export type UserRole = "superadmin" | "admin" | "user";
 
 export type SessionUser = {
 	id: string;
+	businessId: string | null;
 	email: string;
 	resetEmail: string | null;
 	forwardingEmail: string | null;

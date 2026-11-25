@@ -9,10 +9,11 @@ import { getEnv } from "@/lib/cloudflare";
 
 type Db = ReturnType<typeof getDb>;
 
-export function listAccountsForAdmin(db: Db) {
-	return db
+export function listAccountsForAdmin(db: Db, actor?: { role?: string; businessId?: string | null }) {
+	const query = db
 		.select({
 			id: users.id,
+			businessId: users.businessId,
 			email: users.email,
 			name: users.name,
 			resetEmail: users.resetEmail,
@@ -29,14 +30,21 @@ export function listAccountsForAdmin(db: Db) {
 			lastSignInAt: users.lastSignInAt,
 			deletedAt: users.deletedAt,
 		})
-		.from(users)
-		.orderBy(desc(users.createdAt));
+		.from(users);
+
+	if (actor?.role !== "superadmin" && actor?.businessId) {
+		return query.where(eq(users.businessId, actor.businessId)).orderBy(desc(users.createdAt));
+	}
+
+	return query.orderBy(desc(users.createdAt));
 }
 
 type DomainAdminActor = {
 	id: string;
 	canManageMailboxes: boolean;
 	createdByUserId: string | null;
+	role?: string;
+	businessId?: string | null;
 };
 
 /**
@@ -52,6 +60,18 @@ export function domainOwnerIdsForAdmin(actor: DomainAdminActor): string[] {
 }
 
 export async function getDomainForAdmin(db: Db, actor: DomainAdminActor, domainId: string) {
+	if (actor.role === "superadmin") {
+		const [domain] = await db.select().from(domains).where(eq(domains.id, domainId)).limit(1);
+		return domain ?? null;
+	}
+	if (actor.businessId) {
+		const [domain] = await db
+			.select()
+			.from(domains)
+			.where(and(eq(domains.id, domainId), eq(domains.businessId, actor.businessId)))
+			.limit(1);
+		if (domain) return domain;
+	}
 	const [domain] = await db
 		.select()
 		.from(domains)
@@ -71,10 +91,11 @@ export async function getExistingMailbox(db: Db, domainId: string, localPart: st
 
 export function accountListItemFromUser(user: {
 	id: string;
+	businessId?: string | null;
 	email: string;
 	name: string;
 	resetEmail: string | null;
-	role: "admin" | "user";
+	role: "superadmin" | "admin" | "user";
 	isPrimaryAdmin?: boolean;
 	disabled: boolean;
 	avatarKey?: string | null;
@@ -89,6 +110,7 @@ export function accountListItemFromUser(user: {
 }) {
 	return {
 		id: user.id,
+		businessId: user.businessId ?? null,
 		email: user.email,
 		name: user.name,
 		resetEmail: user.resetEmail,

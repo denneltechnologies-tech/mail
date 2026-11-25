@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { isMissingUsersTableError } from "@/lib/auth/setup-utils";
@@ -11,7 +11,7 @@ export async function hasAdminAccount(env: CloudflareEnv): Promise<boolean> {
 		const [admin] = await db
 			.select({ id: users.id })
 			.from(users)
-			.where(eq(users.role, "admin"))
+			.where(or(eq(users.role, "admin"), eq(users.role, "superadmin")))
 			.limit(1);
 
 		return !!admin;

@@ -14,6 +14,7 @@ import {
   KeyRound,
   Bot,
   ShieldCheck,
+  Building2,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "./language-provider";
@@ -27,7 +28,7 @@ import { SidebarHeader } from "./sidebar-header";
 import { SidebarScaffold } from "./sidebar-scaffold";
 import { useSidebar } from "./sidebar-state";
 
-type AdminLinkPermission = "primary" | "domains" | "users";
+type AdminLinkPermission = "superadmin" | "primary" | "domains" | "users";
 
 type AdminNavLink = {
   href: string;
@@ -41,6 +42,13 @@ const sections: { id?: string; labelKey?: TranslationKey; links: AdminNavLink[] 
   {
     // label: "Overview",
     links: [{ href: "/admin", labelKey: "admin.nav.overview", icon: Settings }],
+  },
+  {
+    id: "SuperAdmin",
+    labelKey: "admin.nav.platform",
+    links: [
+      { href: "/businesses", labelKey: "admin.nav.businesses", icon: Building2, permission: "superadmin" },
+    ],
   },
   {
     id: "Email",
@@ -70,7 +78,6 @@ const sections: { id?: string; labelKey?: TranslationKey; links: AdminNavLink[] 
     labelKey: "admin.nav.product",
     links: [
       { href: "/branding", labelKey: "admin.nav.branding", icon: Palette, permission: "primary" },
-      { href: "/licenses", labelKey: "admin.nav.licenses", icon: BadgeDollarSign, permission: "primary" },
     ],
   },
 ];
@@ -102,9 +109,10 @@ export function AdminNav({ className }: { className?: string }) {
   function canSee(link: AdminNavLink): boolean {
     if (!link.permission) return true;
     if (!user) return false;
-    if (link.permission === "primary") return user.isPrimaryAdmin;
-    if (link.permission === "domains") return user.isPrimaryAdmin || user.canManageDomains;
-    return user.isPrimaryAdmin || user.canManageUsers;
+    if (link.permission === "superadmin") return user.role === "superadmin";
+    if (link.permission === "primary") return user.role === "superadmin" || user.isPrimaryAdmin;
+    if (link.permission === "domains") return user.role === "superadmin" || user.isPrimaryAdmin || user.canManageDomains;
+    return user.role === "superadmin" || user.isPrimaryAdmin || user.canManageUsers;
   }
 
   return (

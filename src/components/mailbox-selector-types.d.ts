@@ -4,7 +4,7 @@ export type MailboxSelectorUser = {
 	id: string;
 	email: string;
 	name: string;
-	role: "admin" | "user";
+	role: "superadmin" | "admin" | "user";
 	hasAvatar: boolean;
 	calendarEnabled: boolean;
 	driveEnabled: boolean;

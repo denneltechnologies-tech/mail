@@ -392,6 +392,19 @@
       "statements": [
         "ALTER TABLE `users` ADD `spam_strictness` varchar(64) NOT NULL DEFAULT 'strict';"
       ]
+    },
+    {
+      "name": "0018_add_businesses_and_multi_tenancy.sql",
+      "statements": [
+        "CREATE TABLE IF NOT EXISTS `businesses` (\n\t`id` varchar(191) PRIMARY KEY NOT NULL,\n\t`name` varchar(255) NOT NULL,\n\t`slug` varchar(191) NOT NULL UNIQUE,\n\t`max_users` bigint NOT NULL DEFAULT 10,\n\t`features` text NOT NULL,\n\t`created_at` bigint NOT NULL,\n\t`updated_at` bigint NOT NULL\n);",
+        "CREATE UNIQUE INDEX `businesses_slug_idx` ON `businesses` (`slug`);",
+        "ALTER TABLE `users` ADD `business_id` varchar(191);",
+        "CREATE INDEX `users_business_idx` ON `users` (`business_id`);",
+        "ALTER TABLE `domains` ADD `business_id` varchar(191);",
+        "CREATE INDEX `domains_business_idx` ON `domains` (`business_id`);",
+        "ALTER TABLE `mailboxes` ADD `business_id` varchar(191);",
+        "CREATE INDEX `mailboxes_business_idx` ON `mailboxes` (`business_id`);"
+      ]
     }
   ]
 }

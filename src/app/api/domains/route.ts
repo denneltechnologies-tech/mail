@@ -13,7 +13,7 @@ import { hasValidSessionMutationOrigin } from "@/lib/auth/origin";
 export async function GET(request: NextRequest) {
 	const env = getEnv();
 	const user = await requireUser(env, request);
-	const domains = await listUserDomains(env, domainListOwnerIds(user));
+	const domains = await listUserDomains(env, domainListOwnerIds(user), user.businessId, user.role === "superadmin");
 
 	const includeDns = request.nextUrl.searchParams.get("includeDns") === "true";
 
@@ -60,6 +60,7 @@ export async function POST(request: Request) {
 			skipDns: parsed.data.skipDns,
 			receivingProvider: parsed.data.receivingProvider,
 			sendingProvider: parsed.data.sendingProvider,
+			businessId: user.businessId,
 		});
 		return NextResponse.json(result);
 	} catch (err) {

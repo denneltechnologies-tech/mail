@@ -6,7 +6,7 @@ export type AuthGuardProps = {
 	children: ReactNode;
 	mode?: AuthGuardMode;
 	requireMailbox?: boolean;
-	requireRole?: "admin";
+	requireRole?: "superadmin" | "admin";
 	requirePrimary?: boolean;
 	/** Redirect to /inbox when the account's admin turned this app off. */
 	requireFeature?: "calendar" | "drive";

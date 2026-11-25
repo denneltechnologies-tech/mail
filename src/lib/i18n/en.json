@@ -436,6 +436,8 @@
 	"nav.loading": "Loading",
 	"a11y.skipToContent": "Skip to main content",
 	"admin.nav.overview": "Overview",
+	"admin.nav.platform": "Platform Admin",
+	"admin.nav.businesses": "Businesses",
 	"admin.nav.email": "Email",
 	"admin.nav.mailboxes": "Mailboxes",
 	"admin.nav.domains": "Domains",
