@@ -126,6 +126,29 @@ export async function createBusiness(env: CloudflareEnv, input: CreateBusinessIn
 		throw new Error(`A business with identifier "${slug}" already exists`);
 	}
 
+	// Validate domain format if provided
+	if (input.domainName) {
+		const dom = input.domainName.trim().toLowerCase();
+		if (!dom.includes(".") || dom.startsWith(".") || dom.endsWith(".")) {
+			throw new Error(`"${input.domainName}" is not a valid domain. Please enter a full domain name (e.g. yourcompany.com)`);
+		}
+	}
+
+	// Validate admin credentials if provided
+	if (input.adminEmail) {
+		const adminEmail = input.adminEmail.toLowerCase().trim();
+		if (!adminEmail.includes("@") || !adminEmail.includes(".")) {
+			throw new Error(`"${input.adminEmail}" is not a valid email address.`);
+		}
+		const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, adminEmail)).limit(1);
+		if (existingUser) {
+			throw new Error(`The email address "${adminEmail}" is already registered in the system. Please use a different email for this business administrator.`);
+		}
+		if (!input.adminPassword || input.adminPassword.length < 8) {
+			throw new Error("Initial administrator password must be at least 8 characters long.");
+		}
+	}
+
 	await db.insert(businesses).values({
 		id: bizId,
 		name: input.name.trim(),
@@ -142,19 +165,26 @@ export async function createBusiness(env: CloudflareEnv, input: CreateBusinessIn
 	// If domain provided, create or associate domain
 	if (input.domainName) {
 		domainHostname = normalizeHostname(input.domainName);
-		domainId = newId("dom");
-		await db.insert(domains).values({
-			id: domainId,
-			businessId: bizId,
-			userId: actorId,
-			hostname: domainHostname,
-			zoneId: "manual",
-			status: "active",
-			routingEnabled: true,
-			sendingEnabled: true,
-			dnsSkipped: true,
-			createdAt: now,
-		}).onConflictDoNothing();
+		// Check if domain already exists
+		const [existingDomain] = await db.select().from(domains).where(eq(domains.hostname, domainHostname)).limit(1);
+		if (existingDomain) {
+			domainId = existingDomain.id;
+			await db.update(domains).set({ businessId: bizId }).where(eq(domains.id, domainId));
+		} else {
+			domainId = newId("dom");
+			await db.insert(domains).values({
+				id: domainId,
+				businessId: bizId,
+				userId: actorId,
+				hostname: domainHostname,
+				zoneId: "manual",
+				status: "active",
+				routingEnabled: true,
+				sendingEnabled: true,
+				dnsSkipped: true,
+				createdAt: now,
+			}).onConflictDoNothing();
+		}
 	}
 
 	let createdAdmin: { id: string; email: string; name: string } | null = null;

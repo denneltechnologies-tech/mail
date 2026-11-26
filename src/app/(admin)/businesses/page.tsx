@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, Check, Globe2, Pencil, Plus, Trash2, Users, Shield, Sparkles, Folder, CalendarDays, Palette, Mail } from "@/components/icons";
+import { AlertTriangle, Building2, Check, Globe2, Pencil, Plus, Trash2, Users, Shield, Sparkles, Folder, CalendarDays, Palette, Mail } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -114,6 +114,21 @@ export default function BusinessesPage() {
 		e.preventDefault();
 		if (!name.trim()) return;
 
+		if (domainName.trim() && !domainName.trim().includes(".")) {
+			setError(`"${domainName.trim()}" is not a valid domain name. Please include the domain extension (e.g. ${domainName.trim()}.com).`);
+			return;
+		}
+
+		if (adminEmail.trim() && (!adminEmail.trim().includes("@") || !adminEmail.trim().includes("."))) {
+			setError("Please enter a valid administrator email address.");
+			return;
+		}
+
+		if (adminPassword && adminPassword.length < 8) {
+			setError("Admin password must be at least 8 characters long.");
+			return;
+		}
+
 		setCreating(true);
 		setError(null);
 
@@ -153,6 +168,7 @@ export default function BusinessesPage() {
 	}
 
 	function startEdit(biz: BusinessItem) {
+		setError(null);
 		setEditingBiz(biz);
 		setEditName(biz.name);
 		setEditSlug(biz.slug);
@@ -240,7 +256,10 @@ export default function BusinessesPage() {
 					</p>
 				</div>
 				<Button
-					onClick={() => setCreateOpen(true)}
+					onClick={() => {
+						setError(null);
+						setCreateOpen(true);
+					}}
 					className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-xl px-4 py-2 font-medium"
 				>
 					<Plus className="w-4 h-4" />
@@ -449,6 +468,12 @@ export default function BusinessesPage() {
 					</DialogHeader>
 
 					<form onSubmit={handleCreate} className="space-y-6 mt-4">
+						{error && (
+							<div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-2.5">
+								<AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+								<div>{error}</div>
+							</div>
+						)}
 						{/* Basic Info */}
 						<div className="space-y-4">
 							<h4 className="text-sm font-semibold uppercase tracking-wider text-neutral-500 border-b pb-1">
@@ -629,6 +654,12 @@ export default function BusinessesPage() {
 					</DialogHeader>
 
 					<form onSubmit={handleUpdate} className="space-y-4 mt-4">
+						{error && (
+							<div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-2.5">
+								<AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+								<div>{error}</div>
+							</div>
+						)}
 						<div className="space-y-1.5">
 							<Label htmlFor="edit-name">Business Name</Label>
 							<Input
