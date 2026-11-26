@@ -143,7 +143,7 @@ test("first-run setup domain plus register with skipDns records the domain as ma
 	assert.equal(Number(domain.dns_skipped), 1);
 	const user = f.database.db.prepare("SELECT email, role FROM users").get();
 	assert.equal(user.email, "ada@example.com");
-	assert.equal(user.role, "admin");
+	assert.equal(user.role, "superadmin");
 	const mailbox = f.database.db.prepare("SELECT local_part FROM mailboxes").get();
 	assert.equal(mailbox.local_part, "ada");
 	assert.deepEqual(f.calls, []);

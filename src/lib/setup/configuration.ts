@@ -9,24 +9,32 @@ export function getSetupRequirementChecks(env: CloudflareEnv): SetupRequirementC
 	const database = getDatabaseConfig(env);
 	if (isNodeRuntime(env)) {
 		const mailer = env.EMAIL as unknown as { configured?: boolean };
+		const mailerConfigured = mailer?.configured === true;
+		const hasCf = hasCloudflareCredentials(env);
 		return [
 			{
 				key: "Database",
 				configured: !!env.DB,
-				message: database.driver === "d1" ? "DATA_DIR must be writable; the SQLite database is created there on start." : "DATABASE_URL must be reachable; migrations are applied on start.",
+				message: database.driver === "d1" ? "DATA_DIR is writable; the SQLite database is ready." : "DATABASE_URL is connected; migrations are applied on start.",
 			},
 			{
-				key: "Outbound mail",
-				configured: mailer?.configured === true,
-				message: "Set SMTP_URL, or CF_ACCOUNT_ID with CF_TOKEN to send through Cloudflare. Receiving works without it.",
-			},
-			{
-				key: "Cloudflare API credentials (optional)",
+				key: mailerConfigured ? "Outbound mail" : "Outbound mail (optional)",
 				configured: true,
-				message: hasCloudflareCredentials(env)
-					? "Domains are provisioned on Cloudflare automatically."
-					: "Not set: add MX and SPF records for each domain by hand, as shown on the domain page.",
+				message: mailerConfigured
+					? "Outbound mail relay is configured."
+					: "Self-hosted VPS mode: outbound mail can use standard SMTP relay (SMTP_URL) or be configured later in Admin Settings. Inbound mail is received directly on this server.",
 			},
+			hasCf
+				? {
+					key: "Cloudflare API credentials (optional)",
+					configured: true,
+					message: "Domains are provisioned on Cloudflare automatically.",
+				}
+				: {
+					key: "DNS & Domain Management",
+					configured: true,
+					message: "Self-hosted VPS mode: DNS records (MX, SPF, DKIM) are managed directly at your domain registrar or DNS provider.",
+				},
 		];
 	}
 

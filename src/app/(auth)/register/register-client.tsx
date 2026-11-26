@@ -33,8 +33,8 @@ export function RegisterClient() {
   const [setupDomain, setSetupDomain] = useState<string | null>(null);
   const [domainCheck, setDomainCheck] = useState<DomainPreflight | null>(null);
   const [domainChecking, setDomainChecking] = useState(false);
-  const [enableSending, setEnableSending] = useState(false);
-  const [setupEnableSending, setSetupEnableSending] = useState(false);
+  const [enableSending, setEnableSending] = useState(true);
+  const [setupEnableSending, setSetupEnableSending] = useState(true);
   const [skipDns, setSkipDns] = useState(false);
   const [setupSkipDns, setSetupSkipDns] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -119,6 +119,10 @@ export function RegisterClient() {
       setHasPrimaryDomain(data.hasPrimaryDomain);
       setPrimaryDomain(data.primaryDomain?.hostname ?? null);
       setPrimaryDomainSendingRequested(data.primaryDomain?.sendingRequested ?? null);
+      if (!data.hasCloudflare) {
+        setSkipDns(true);
+        setSetupSkipDns(true);
+      }
       setPreparationComplete(true);
     } catch (error) {
       setError(error instanceof Error ? error.message : t("setup.prepFailed"));

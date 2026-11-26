@@ -1,6 +1,8 @@
 export type SetupStatus = {
 	hasAdminAccount: boolean;
 	hasPrimaryDomain: boolean;
+	hasCloudflare?: boolean;
+	isNode?: boolean;
 	primaryDomain?: { hostname: string; sendingRequested: boolean } | null;
 	error?: string;
 };
