@@ -35,9 +35,13 @@ export default function CloudflareReceivingConfig({ domainId, routingOk, routing
 			<ul className="space-y-2">
 				<StatusRow
 					ok={routingOk}
-					title={t("domains.emailRouting")}
-					hint={t("domains.emailRoutingHint")}
-					action={!routingOk ? (
+					title={manual ? "Direct VPS Inbound (SMTP)" : t("domains.emailRouting")}
+					hint={manual ? "Receives mail directly on port 25 via your domain MX record." : t("domains.emailRoutingHint")}
+					action={manual ? (
+						<Button size="sm" variant="outline" className="bg-white" disabled={busy} onClick={() => onChanged?.()}>
+							Re-check DNS
+						</Button>
+					) : !routingOk ? (
 						<Button size="sm" variant="outline" className="bg-white" disabled={busy || manual} title={manual ? t("domains.manualDns") : undefined} onClick={() => void setup()}>
 							{busy ? t("domains.settingUp") : t("domains.setup")}
 						</Button>

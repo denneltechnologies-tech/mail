@@ -66,11 +66,15 @@ export default function ReceivingSetupSection({ domain, onChange, busy, message,
 				{OPTIONS.map((option) => {
 					const selected = domain.receivingProvider === option.id;
 					const ok = !selected ? null : option.id === "cloudflare" ? cloudflareOk : ready[option.id];
+					const isCf = option.id === "cloudflare";
+					const isManual = domain.zoneId === "manual";
+					const title = isCf && isManual ? "Direct VPS Inbound (SMTP)" : t(option.titleKey);
+					const description = isCf && isManual ? "Mail arrives directly to this VPS on port 25 via your domain MX record." : t(option.descriptionKey);
 					return (
 						<ProviderCard
 							key={option.id}
-							title={t(option.titleKey)}
-							description={t(option.descriptionKey)}
+							title={title}
+							description={description}
 							ok={ok}
 							selected={selected}
 							disabled={busy}

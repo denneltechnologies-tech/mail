@@ -34,12 +34,18 @@ export default function DomainDnsDetails({
 				? t("domains.sendingConfigured")
 				: t("domains.sendingNotConfigured")
 			: t("domains.sendingNotSet");
-	const routingOk = dns.routing.missing.length === 0 && (dns.routing.records.length > 0 || domain.routingEnabled);
-	const routingLabel = routingOk
-		? t("domains.routingConfigured")
-		: dns.routing.missing.length > 0
-			? t("domains.recordsMissing", { count: dns.routing.missing.length })
-			: t("domains.noRoutingRecords");
+	const routingOk = manual
+		? audit?.mx.status === "ok"
+		: dns.routing.missing.length === 0 && (dns.routing.records.length > 0 || domain.routingEnabled);
+	const routingLabel = manual
+		? audit?.mx.status === "ok"
+			? "Inbound routing active (VPS Port 25)"
+			: "MX record required to receive mail"
+		: routingOk
+			? t("domains.routingConfigured")
+			: dns.routing.missing.length > 0
+				? t("domains.recordsMissing", { count: dns.routing.missing.length })
+				: t("domains.noRoutingRecords");
 
 	const auditRow = (record: DnsAuthRecord) => {
 		if (!audit) return null;
@@ -54,13 +60,22 @@ export default function DomainDnsDetails({
 				</span>
 				{ok ? (
 					<span className="min-w-0 break-all text-neutral-500">{item.found.length > 0 ? item.found.join(", ") : item.name}</span>
+				) : manual ? (
+					<Button
+						variant="outline"
+						size="sm"
+						className="shrink-0 bg-white text-xs"
+						onClick={() => onDnsChanged?.()}
+					>
+						Verify
+					</Button>
 				) : (
 					<Button
 						variant="outline"
 						size="sm"
 						className="shrink-0 bg-white"
-						disabled={manual || setupRecord === record}
-						title={manual ? t("domains.manualDns") : t("domains.createRecord", { label: item.label })}
+						disabled={setupRecord === record}
+						title={t("domains.createRecord", { label: item.label })}
 						onClick={() => onSetup?.(record)}
 					>
 						{setupRecord === record ? t("domains.settingUp") : t("domains.setup")}
@@ -85,10 +100,61 @@ export default function DomainDnsDetails({
 		<div className="px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
 			{audit && (
 				<section>
-					<h2 className="text-base font-semibold text-neutral-900">{t("domains.setupTitle")}</h2>
-					<p className="mt-0.5 text-sm text-neutral-500">
-						{t("domains.setupDescription")}
-					</p>
+					<div className="flex items-center justify-between">
+						<div>
+							<h2 className="text-base font-semibold text-neutral-900">{t("domains.setupTitle")}</h2>
+							<p className="mt-0.5 text-sm text-neutral-500">
+								{t("domains.setupDescription")}
+							</p>
+						</div>
+						{manual && (
+							<Button size="sm" variant="outline" className="bg-white text-xs shrink-0" onClick={() => onDnsChanged?.()}>
+								Re-check DNS
+							</Button>
+						)}
+					</div>
+					{manual && (
+						<div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-sm">
+							<div className="mb-2">
+								<h3 className="font-semibold text-blue-950">Required DNS Records for {domain.hostname}</h3>
+								<p className="text-xs text-neutral-600 mt-0.5">
+									Add the following records at your DNS manager (e.g. Cloudflare DNS / Domain Registrar):
+								</p>
+							</div>
+							<div className="overflow-x-auto">
+								<table className="w-full text-left text-xs">
+									<thead>
+										<tr className="border-b border-blue-200/80 text-neutral-600">
+											<th className="py-1.5 font-semibold">Type</th>
+											<th className="py-1.5 font-semibold">Host / Name</th>
+											<th className="py-1.5 font-semibold">Value / Target</th>
+											<th className="py-1.5 font-semibold">Priority</th>
+										</tr>
+									</thead>
+									<tbody className="divide-y divide-blue-200/50 font-mono text-xs">
+										<tr>
+											<td className="py-1.5 font-sans font-semibold text-neutral-800">MX</td>
+											<td className="py-1.5">@</td>
+											<td className="py-1.5 font-semibold text-blue-900 select-all">mail-69-62-106-189.sslip.io</td>
+											<td className="py-1.5 font-sans">10</td>
+										</tr>
+										<tr>
+											<td className="py-1.5 font-sans font-semibold text-neutral-800">TXT (SPF)</td>
+											<td className="py-1.5">@</td>
+											<td className="py-1.5 select-all text-neutral-800">v=spf1 ip4:69.62.106.189 ~all</td>
+											<td className="py-1.5 font-sans">-</td>
+										</tr>
+										<tr>
+											<td className="py-1.5 font-sans font-semibold text-neutral-800">TXT (DMARC)</td>
+											<td className="py-1.5">_dmarc</td>
+											<td className="py-1.5 select-all text-neutral-800">v=DMARC1; p=none</td>
+											<td className="py-1.5 font-sans">-</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					)}
 					<ul className="mt-3 space-y-2">
 						{(["mx", "spf", "dmarc"] as DnsAuthRecord[]).map(auditRow)}
 					</ul>
