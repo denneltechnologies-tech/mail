@@ -6,6 +6,7 @@ import { sendSesEmail } from "@/lib/aws/ses";
 import { getEmailAddress } from "@/lib/email/address";
 import { fetchSentMessageId, resendClient, resendOmittedHeaders, resendSetsMessageId, type ResendClient } from "@/lib/email/resend-api";
 import type { OutboundProviderConfig, OutboundProviderMessage, ResendKeyStatus } from "@/lib/email/outbound-provider-types";
+import { isNodeRuntime } from "@/lib/runtime";
 
 /**
  * Each domain picks its own sender: Cloudflare Email Sending, Resend, or none
@@ -41,6 +42,9 @@ export async function getOutboundProviderConfig(env: CloudflareEnv, fromAddress:
 		? await getDb(env).select({ provider: domains.sendingProvider }).from(domains).where(eq(domains.hostname, hostname)).limit(1)
 		: [];
 	if (!domain || domain.provider === "none") {
+		if (isNodeRuntime()) {
+			return { provider: "cloudflare" };
+		}
 		throw new Error(`Sending is not set up for ${hostname ?? "this domain"}. Choose a sending provider on the Domains page.`);
 	}
 	if (domain.provider === "resend") return { provider: "resend", apiKey: (await getResendClient(env)).apiKey };

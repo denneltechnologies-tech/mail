@@ -1,3 +1,4 @@
+import dns from "node:dns";
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 import { getEmailAddress } from "@/lib/email/address";
@@ -48,7 +49,7 @@ export class Mailer {
 	}
 
 	get configured() {
-		return this.config.kind !== "none";
+		return true;
 	}
 
 	async send(message: Builder): Promise<{ messageId: string }> {
@@ -108,7 +109,66 @@ export class Mailer {
 			return { messageId };
 		}
 
-		throw new Error("Outbound mail is not configured. Set SMTP_URL, or CF_ACCOUNT_ID and CF_TOKEN.");
+		// Direct MX Delivery over IPv4 for self-hosted setup
+		const recipients = Array.isArray(message.to) ? message.to : [message.to];
+		for (const rcpt of recipients) {
+			const emailStr = getEmailAddress(rcpt);
+			const domain = emailStr.split("@")[1]?.toLowerCase();
+			if (!domain) continue;
+
+			let targetMx = domain;
+			try {
+				const mxList = await dns.promises.resolveMx(domain);
+				if (mxList.length > 0) {
+					mxList.sort((a, b) => a.priority - b.priority);
+					targetMx = mxList[0].exchange;
+				}
+			} catch (err) {
+				console.warn(`MX lookup failed for ${domain}, attempting direct connection:`, err);
+			}
+
+			// Force IPv4 lookup so outbound traffic matches SPF ip4 record
+			let hostToUse = targetMx;
+			try {
+				const [ipv4] = await dns.promises.resolve4(targetMx);
+				if (ipv4) hostToUse = ipv4;
+			} catch {
+				// fallback to hostname
+			}
+
+			const directTransporter = nodemailer.createTransport({
+				host: hostToUse,
+				port: 25,
+				secure: false,
+				name: process.env.MAIL_HOSTNAME || "mail-69-62-106-189.sslip.io",
+				tls: {
+					rejectUnauthorized: false,
+					servername: targetMx,
+				},
+			});
+
+			await directTransporter.sendMail({
+				from: addressString(message.from),
+				to: rcpt,
+				cc: message.cc,
+				bcc: message.bcc,
+				replyTo: message.replyTo ? addressString(message.replyTo) : undefined,
+				subject: message.subject,
+				text: message.text,
+				html: message.html,
+				headers: Object.fromEntries(Object.entries(headers).filter(([key]) => key !== "Message-ID")),
+				messageId,
+				attachments: (message.attachments ?? []).map((attachment) => ({
+					filename: attachment.filename,
+					contentType: attachment.type,
+					content: toBuffer(attachment.content),
+					contentDisposition: attachment.disposition === "inline" ? "inline" : "attachment",
+					cid: attachment.contentId ?? undefined,
+				})),
+			});
+		}
+
+		return { messageId };
 	}
 
 	/** Relay a raw RFC 5322 message unchanged, for forwarding rules. SMTP only. */
