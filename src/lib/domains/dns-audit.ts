@@ -87,7 +87,7 @@ export async function auditDomainDns(
 			? `${view.dkimSelector}._domainkey.${hostname}`
 			: undefined) ??
 		expected.find((record) => isTxt(record) && /_domainkey/i.test(record.name ?? ""))?.name ??
-		(sendingProvider === "resend" ? `resend._domainkey.${hostname}` : undefined);
+		(sendingProvider === "resend" ? `resend._domainkey.${hostname}` : `mail._domainkey.${hostname}`);
 
 	const [mx, spf, dmarc] = await Promise.all([
 		check("mx", "MX", hostname, "MX", (value) => !/^0\s*\.?$/.test(value.trim())),

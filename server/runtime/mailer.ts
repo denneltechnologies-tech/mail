@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import dns from "node:dns";
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
@@ -136,15 +138,39 @@ export class Mailer {
 				// fallback to hostname
 			}
 
+			// Load DKIM private key for outbound signing
+			let dkimConfig: { domainName: string; keySelector: string; privateKey: string } | undefined;
+			try {
+				const fromEmail = getEmailAddress(addressString(message.from));
+				const fromDomain = fromEmail.split("@")[1]?.toLowerCase() || "dennelgroup.com";
+				const keyPaths = [
+					"/data/dkim/mail.key",
+					join(process.cwd(), "data", "dkim", "mail.key"),
+				];
+				for (const kp of keyPaths) {
+					if (existsSync(kp)) {
+						dkimConfig = {
+							domainName: fromDomain,
+							keySelector: "mail",
+							privateKey: readFileSync(kp, "utf-8"),
+						};
+						break;
+					}
+				}
+			} catch (e) {
+				console.warn("Failed to load DKIM key for outbound signing:", e);
+			}
+
 			const directTransporter = nodemailer.createTransport({
 				host: hostToUse,
 				port: 25,
 				secure: false,
-				name: process.env.MAIL_HOSTNAME || "mail-69-62-106-189.sslip.io",
+				name: "srv1964832.hstgr.cloud",
 				tls: {
 					rejectUnauthorized: false,
 					servername: targetMx,
 				},
+				dkim: dkimConfig,
 			});
 
 			await directTransporter.sendMail({

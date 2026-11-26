@@ -141,7 +141,13 @@ export default function DomainDnsDetails({
 										<tr>
 											<td className="py-1.5 font-sans font-semibold text-neutral-800">TXT (SPF)</td>
 											<td className="py-1.5">@</td>
-											<td className="py-1.5 select-all text-neutral-800">v=spf1 ip4:69.62.106.189 ~all</td>
+											<td className="py-1.5 select-all text-neutral-800">v=spf1 ip4:69.62.106.189 ip6:2a02:4780:28:1676::1 ~all</td>
+											<td className="py-1.5 font-sans">-</td>
+										</tr>
+										<tr>
+											<td className="py-1.5 font-sans font-semibold text-neutral-800">TXT (DKIM)</td>
+											<td className="py-1.5">mail._domainkey</td>
+											<td className="py-1.5 select-all text-neutral-800 break-all">v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAovNd5PMKLLMJgrpHzjwHiNbTZ55Bu7Fpi/h4bHXXpSWzm0MJa2eS3R5UOZlXV4CLr73nWheUGCgXxl1TrrAUHXyGS7K0co6OZndfNYocEio91oxA6ej2mfkiwzrqcmxs7zfv3TVTwJpEtEhKewUlPoATE8o2G/fxvEETplq1fXCnZFx4MJ6w8aayMbzAbHIwaBKtlvcBPydbxvRWxNE+C+pfgxfzsRjUHBzpFBOBdZh0YKO0DB/vDGpz3r8PrrKUo+AJ8QfTvuJgMEEiSa4SnL/swY3a7KzxlfKx10y4zhPd35eamVfVyP2qVFRiM3KM16EdNUD3WnRegzLplyZ+pQIDAQAB</td>
 											<td className="py-1.5 font-sans">-</td>
 										</tr>
 										<tr>
@@ -156,7 +162,7 @@ export default function DomainDnsDetails({
 						</div>
 					)}
 					<ul className="mt-3 space-y-2">
-						{(["mx", "spf", "dmarc"] as DnsAuthRecord[]).map(auditRow)}
+						{(["mx", "spf", "dkim", "dmarc"] as DnsAuthRecord[]).map(auditRow)}
 					</ul>
 					{manual && (
 						<p className="text-xs text-neutral-500">
